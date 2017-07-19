@@ -1,42 +1,65 @@
 from drongo import HttpResponseHeaders
 
-from functools import partial
 from datetime import datetime, timedelta
+from functools import partial
 
-import mimetypes
+import json
 import os
+import uuid
 
 
 class Filesystem(object):
     def __init__(self, **config):
         self.path = config.get('path')
-        self.age = 300
 
-    def save(self, path, fd):
-        fpath = os.path.join(self.path, path)
+    def init(self):
+        pass  # Nothing to be done here!
 
-        if not os.path.exists(os.path.dirname(fpath)):
-            os.makedirs(os.path.dirname(fpath))
+    def _normalize_container(self, value):
+        return value.replace('/', '__')
+
+    def put(self, container, fd, metadata):
+        container = self._normalize_container(container)
+
+        folder = os.path.join(self.path, container)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
+        while True:
+            key = uuid.uuid4().hex
+            fpath = os.path.join(folder, key)
+            if not os.path.exists(fpath):
+                break
+
+        with open(fpath + '.meta', 'w') as mfd:
+            json.dump(metadata, mfd)
 
         with open(fpath, 'wb') as wfd:
             for chunk in iter(partial(fd.read, 102400), b''):
                 wfd.write(chunk)
 
-    def chunks(self, path):
-        with open(path, 'rb') as fd:
-            for chunk in iter(partial(fd.read, 102400), b''):
-                yield chunk
+        return key
 
-    def serve(self, path, ctx):
-        path = os.path.join(self.path, path)
+    def get(self, container, key):
+        container = self._normalize_container(container)
+        folder = os.path.join(self.path, container)
+        fpath = os.path.join(folder, fpath)
 
-        ctx.response.set_header(HttpResponseHeaders.CACHE_CONTROL,
-                                'max-age=%d' % self.age)
+        if os.path.exists(fpath):
+            with open(fpath + '.meta') as mfd:
+                return open(fpath, 'rb'), json.load(mfd)
 
-        expires = datetime.utcnow() + timedelta(seconds=(self.age))
-        expires = expires.strftime('%a, %d %b %Y %H:%M:%S GMT')
-        ctx.response.set_header(HttpResponseHeaders.EXPIRES, expires)
+        raise FileNotFoundError
 
-        ctype = 'application/octet-stream'
-        ctx.response.set_header(HttpResponseHeaders.CONTENT_TYPE, ctype)
-        ctx.response.set_content(self.chunks(path), os.stat(path).st_size)
+    def delete(self, container, key):
+        container = self._normalize_container(container)
+        folder = os.path.join(self.path, container)
+        fpath = os.path.join(folder, fpath)
+
+        if os.path.exists(fpath):
+            return os.unlink(fpath)
+
+        raise FileNotFoundError
+
+    def list(self, container):
+        raise NotImplementedError
