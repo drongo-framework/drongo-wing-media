@@ -31,19 +31,23 @@ class Filesystem(object):
             if not os.path.exists(fpath):
                 break
 
-        with open(fpath + '.meta', 'w') as mfd:
-            json.dump(metadata, mfd)
-
+        size = 0
         with open(fpath, 'wb') as wfd:
             for chunk in iter(partial(fd.read, 102400), b''):
                 wfd.write(chunk)
+                size += len(chunk)
+
+        metadata['size'] = size
+        metadata['physical_path'] = fpath
+        with open(fpath + '.meta', 'w') as mfd:
+            json.dump(metadata, mfd)
 
         return key
 
     def get(self, container, key):
         container = self._normalize_container(container)
         folder = os.path.join(self.path, container)
-        fpath = os.path.join(folder, fpath)
+        fpath = os.path.join(folder, key)
 
         if os.path.exists(fpath):
             with open(fpath + '.meta') as mfd:
@@ -54,10 +58,12 @@ class Filesystem(object):
     def delete(self, container, key):
         container = self._normalize_container(container)
         folder = os.path.join(self.path, container)
-        fpath = os.path.join(folder, fpath)
+        fpath = os.path.join(folder, key)
 
         if os.path.exists(fpath):
-            return os.unlink(fpath)
+            os.unlink(fpath)
+            os.unlink(fpath + '.meta')
+            return
 
         raise FileNotFoundError
 
