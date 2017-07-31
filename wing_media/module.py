@@ -3,14 +3,14 @@ from drongo import HttpResponseHeaders
 from datetime import datetime, timedelta
 from functools import partial
 
-import os
-
 
 class Media(object):
     def __init__(self, app, **config):
         self.app = app
 
         self.age = config.get('age', 300)
+        self.base_url = config.get('base_url', '/media')
+        self.max_depth = config.get('max_depth', 6)
 
         #  Load and configure the media storage
         storage = config.get('storage', 'filesystem')
@@ -29,11 +29,24 @@ class Media(object):
     def init(self):
         self.storage.init()
 
+        parts = ['', '{a}', '{b}', '{c}', '{d}', '{e}', '{f}']
+        for i in range(2, self.max_depth + 2):
+            self.app.add_url(
+                pattern=self.base_url + '/'.join(parts[:i]),
+                call=self._serve_media)
+
     def put(self, container, fd, metadata={}):
         return self.storage.put(container, fd, metadata)
 
     def get(self, container, key):
         return self.storage.get(container, key)
+
+    def get_url(self, container, key):
+        return '{base_url}/{container}/{key}'.format(
+            base_url=self.base_url,
+            container=container,
+            key=key
+        )
 
     def delete(self, container, key):
         self.storage.delete(container, key)
@@ -59,3 +72,14 @@ class Media(object):
         ctx.response.set_header(HttpResponseHeaders.EXPIRES, expires)
         ctx.response.set_header(HttpResponseHeaders.CONTENT_TYPE, ctype)
         ctx.response.set_content(self._chunks(fd), size)
+
+    def _serve_media(self, ctx,
+                     a=None, b=None, c=None, d=None, e=None, f=None):
+        parts = [a, b, c, d, e, f]
+        while None in parts:
+            parts.remove(None)
+
+        container = '/'.join(parts[:-1])
+        key = parts[-1]
+
+        self.serve(ctx, container, key)
