@@ -4,6 +4,7 @@ from wing_module import Module
 class Media(Module):
     FILESYSTEM = 'filesystem'
     CLOUDINARY = 'cloudinary'
+    AWS_S3 = 'aws_s3'
 
     def init(self, config):
         #  Load and configure the media storage
@@ -18,6 +19,10 @@ class Media(Module):
         elif storage == self.CLOUDINARY:
             from .storage._cloudinary import Cloudinary
             klass = Cloudinary
+
+        elif storage == self.AWS_S3:
+            from .storage._aws_s3 import AWSS3
+            klass = AWSS3
 
         if klass is not None:
             self.storage = klass(self.app, **config)
