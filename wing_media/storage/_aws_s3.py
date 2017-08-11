@@ -33,7 +33,9 @@ class AWSS3(object):
         raise NotImplementedError
 
     def delete(self, container, key):
-        pass
+        s3_key = '/'.join((container, key))
+        obj = self.bucket.Object(s3_key)
+        obj.delete()
 
     def get_url(self, container, key):
         return (

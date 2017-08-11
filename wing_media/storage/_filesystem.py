@@ -62,6 +62,13 @@ class Filesystem(object):
 
         raise FileNotFoundError
 
+    def get_url(self, container, key):
+        return '{base_url}/{container}/{key}'.format(
+            base_url=self.base_url,
+            container=container,
+            key=key
+        )
+
     def delete(self, container, key):
         container = self._normalize_container(container)
         folder = os.path.join(self.path, container)
