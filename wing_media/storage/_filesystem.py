@@ -9,11 +9,17 @@ import uuid
 
 
 class Filesystem(object):
-    def __init__(self, **config):
-        self.path = config.get('path')
+    def __init__(self, app, **config):
+        self.app = app
+
+        self.path = config.get('filesystem_path')
+
+        self.age = config.get('age', 300)
+        self.base_url = config.get('base_url', '/media')
+        self.max_depth = config.get('max_depth', 6)
 
     def init(self):
-        pass  # Nothing to be done here!
+        self.init_urls()
 
     def _normalize_container(self, value):
         return value.replace('/', '__')
@@ -39,6 +45,7 @@ class Filesystem(object):
 
         metadata['size'] = size
         metadata['physical_path'] = fpath
+
         with open(fpath + '.meta', 'w') as mfd:
             json.dump(metadata, mfd)
 
@@ -69,3 +76,40 @@ class Filesystem(object):
 
     def list(self, container):
         raise NotImplementedError
+
+    def init_urls(self):
+        parts = ['', '{a}', '{b}', '{c}', '{d}', '{e}', '{f}']
+        for i in range(2, self.max_depth + 2):
+            self.app.add_url(
+                pattern=self.base_url + '/'.join(parts[:i]),
+                call=self._serve_media)
+
+    def _chunks(self, fd):
+        for chunk in iter(partial(fd.read, 102400), b''):
+            yield chunk
+        fd.close()
+
+    # helper functions
+    def serve(self, ctx, container, key):
+        fd, meta = self.get(container, key)
+        ctype = meta.get('mimetype')
+        size = meta.get('size')
+        expires = datetime.utcnow() + timedelta(seconds=(self.age))
+        expires = expires.strftime('%a, %d %b %Y %H:%M:%S GMT')
+
+        ctx.response.set_header(HttpResponseHeaders.CACHE_CONTROL,
+                                'max-age=%d' % self.age)
+        ctx.response.set_header(HttpResponseHeaders.EXPIRES, expires)
+        ctx.response.set_header(HttpResponseHeaders.CONTENT_TYPE, ctype)
+        ctx.response.set_content(self._chunks(fd), size)
+
+    def _serve_media(self, ctx,
+                     a=None, b=None, c=None, d=None, e=None, f=None):
+        parts = [a, b, c, d, e, f]
+        while None in parts:
+            parts.remove(None)
+
+        container = '/'.join(parts[:-1])
+        key = parts[-1]
+
+        self.serve(ctx, container, key)
