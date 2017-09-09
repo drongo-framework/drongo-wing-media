@@ -1,6 +1,9 @@
 from wing_module import Module
 
 
+__all__ = ['Media']
+
+
 class Media(Module):
     FILESYSTEM = 'filesystem'
     CLOUDINARY = 'cloudinary'

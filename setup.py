@@ -3,7 +3,7 @@
 from setuptools import find_packages, setup
 
 
-VERSION = '1.1.1'
+VERSION = '1.2.0'
 REPO_URL = 'https://github.com/drongo-framework/drongo-wing-media'
 DOWNLOAD_URL = REPO_URL + '/archive/v{version}.tar.gz'.format(version=VERSION)
 
@@ -27,7 +27,8 @@ setup(
     ],
     packages=find_packages(),
     install_requires=[
-        'drongo-wing-module>=1.0.1',
+        'drongo>=1.2.0',
+        'drongo-wing-module>=1.2.0',
     ],
     url=REPO_URL,
     download_url=DOWNLOAD_URL,
