@@ -1,17 +1,30 @@
 from wing_module import Module
 
+import logging
+
 
 __all__ = ['Media']
 
 
 class Media(Module):
+    """Drongo module that manages media"""
+
     FILESYSTEM = 'filesystem'
     CLOUDINARY = 'cloudinary'
     AWS_S3 = 'aws_s3'
 
+    __default_config__ = {
+        'storage': FILESYSTEM,
+    }
+
+    logger = logging.getLogger('wing_media')
+
     def init(self, config):
+        self.logger.info('Initializing [media] module.')
+        self.app.context.modules.media = self
+
         #  Load and configure the media storage
-        storage = config.get('storage', self.FILESYSTEM)
+        storage = config.storage
         self.storage = None
         klass = None
 
@@ -29,6 +42,9 @@ class Media(Module):
 
         if klass is not None:
             self.storage = klass(self.app, **config)
+        else:
+            self.logger.error('Cannot load [media] module.')
+            raise NotImplementedError
 
         self.storage.init()
 
