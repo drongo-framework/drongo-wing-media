@@ -1,11 +1,11 @@
-from drongo import HttpResponseHeaders
+import json
+import os
+import uuid
 
 from datetime import datetime, timedelta
 from functools import partial
 
-import json
-import os
-import uuid
+from drongo import HttpResponseHeaders
 
 
 class Filesystem(object):
@@ -22,7 +22,12 @@ class Filesystem(object):
         self.init_urls()
 
     def _normalize_container(self, value):
-        return value.replace('/', '__')
+        # TODO: Fix up special characters to safe ones
+        value.replace('..', '__')  # Protect against directory attacks
+        while value.startswith('/'):
+            value = value[1:]
+
+        return value
 
     def put(self, container, fd, metadata):
         container = self._normalize_container(container)
